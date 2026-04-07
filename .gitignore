@@ -1,8 +1,4 @@
-# Visual Studio
-.vs/
-FunnyApp/
-*.user
-*.aps
+# Build artifacts
 
 # Build output
 x64/
