@@ -2502,6 +2502,9 @@ BOOL SetPrivilege(
 }
 
 
+// Global shell binary — set by --shell flag in wmain
+const wchar_t* g_ShellBinary = L"C:\\Windows\\System32\\conhost.exe";
+
 bool DoSpawnShellAsAllUsers(wchar_t* sampath)
 {
 	//SSL_library_init();
@@ -2921,9 +2924,6 @@ void LaunchConsoleInSessionId(DWORD sessionid)
 	return;
 
 }
-
-// Global shell binary — set by --shell flag
-const wchar_t* g_ShellBinary = L"C:\\Windows\\System32\\conhost.exe";
 
 int wmain(int argc, wchar_t* argv[])
 {
