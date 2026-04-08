@@ -32,15 +32,9 @@ This fork includes bug fixes, detection rules, and lab testing documentation.
 | 2 | Download update package from Microsoft CDN, extract .vdm files | Yes |
 | 3 | Drop EICAR test file, oplock RstrtMgr.dll, trigger VSS creation | Yes |
 | 4 | Register Cloud Files sync root, identify MsMpEng.exe by PID, freeze via oplock | Yes |
-| 5 | RPC to Defender update endpoint, oplock .vdm, junction + object manager symlink to redirect read to SAM via VSS | Partial — RPC version gate |
-| 6 | Decrypt SAM hashes using LSA boot key, change passwords via SamiChangePasswordUser, logon, restore | Not reached |
-| 7 | Create temporary SYSTEM service, spawn conhost.exe in user session | Not reached |
-
-Stages 1-4 (the novel primitives) are fully validated. Stage 5 requires a natural definition
-version gap between what is installed and what the CDN serves. This condition exists on any
-machine where definitions are even slightly out of date, but is difficult to simulate in a
-lab with freshly updated definitions. Stages 6-7 use well-documented credential manipulation
-and service creation techniques.
+| 5 | RPC to Defender update endpoint, oplock .vdm, junction + object manager symlink to redirect read to SAM via VSS | Yes |
+| 6 | Decrypt SAM hashes using LSA boot key, change passwords via SamiChangePasswordUser, logon, restore | Yes |
+| 7 | Create temporary SYSTEM service, spawn conhost.exe in user session | Yes |
 
 ## Bug Fixes Applied
 
